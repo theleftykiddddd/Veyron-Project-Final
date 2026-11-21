@@ -1,0 +1,81 @@
+
+name: Veyron Proyect - Windows Build
+
+on:
+  push:
+    branches:
+      - main
+      - "ci/**"
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veyron-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  build:
+    name: Build Geode Mod (Windows x64)
+
+    runs-on: windows-latest
+
+    steps:
+
+      # 1. Download the repository source code
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # 2. Compile the Geometry Dash Geode mod
+      - name: Build Veyron Proyect
+        id: geode-build
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: v5.11.2
+          cli: latest
+          target: Win64
+          build-config: Release
+
+      # 3. Verify that the .geode package exists
+      - name: Verify Geode package
+        shell: pwsh
+        env:
+          BUILD_OUTPUT: ${{ steps.geode-build.outputs.build-output }}
+        run: |
+          if (-not (Test-Path -LiteralPath $env:BUILD_OUTPUT -PathType Container)) {
+            throw "Geode output directory does not exist."
+          }
+
+          $packages = @(
+            Get-ChildItem `
+              -LiteralPath $env:BUILD_OUTPUT `
+              -Filter "*.geode" `
+              -File `
+              -Recurse
+          )
+
+          if ($packages.Count -eq 0) {
+            throw "No .geode package was generated."
+          }
+
+          Write-Host "Veyron package successfully generated:"
+
+          foreach ($package in $packages) {
+            Write-Host $package.FullName
+          }
+
+      # 4. Upload the final .geode package
+      - name: Upload Veyron Geode package
+        uses: actions/upload-artifact@v7
+        with:
+          name: Veyron-Proyect-Windows-x64
+          path: ${{ steps.geode-build.outputs.build-output }}
+          if-no-files-found: error
+          retention-days: 30
