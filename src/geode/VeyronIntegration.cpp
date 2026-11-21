@@ -503,6 +503,10 @@ std::string buildHudText() {
     if (settingBool("hud-show-cps", true)) {
         text += "\nCPS ~    " + std::to_string(recentCpsCount());
     }
+    // Do not imply that the project measures hitbox windows: the backend
+    // required for that feature has not been validated/implemented yet.
+    text += "\nWINDOW   UNMEASURED";
+
     if (settingBool("hud-show-last-action", true) && !g_lastStatus.empty()) {
         auto lastAction = g_lastStatus;
         constexpr std::size_t maxStatusChars = 32;
@@ -546,7 +550,7 @@ void attachHud(PlayLayer* layer, bool readPersistentSetting = true) {
     if (!g_runtimeHudVisible) return;
 
     constexpr float panelWidth = 244.f;
-    constexpr float panelHeight = 104.f;
+    constexpr float panelHeight = 120.f;
 
     // A translucent panel makes the HUD readable over bright level decoration.
     g_hudPanel = CCLayerColor::create(
