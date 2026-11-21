@@ -1,4 +1,3 @@
-
 name: Veyron Proyect - Windows Build
 
 on:
@@ -6,6 +5,7 @@ on:
     branches:
       - main
       - "ci/**"
+      - "ui/**"
 
   pull_request:
     branches:
@@ -21,19 +21,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
-  build:
-    name: Build Geode Mod (Windows x64)
-
-    runs-on: windows-latest
-
+  core-tests:
+    name: Test C++ core
+    runs-on: ubuntu-latest
     steps:
-
-      # 1. Download the repository source code
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # 2. Compile the Geometry Dash Geode mod
+      - name: Configure standalone core
+        run: cmake -S . -B build-core -DVEYRON_STANDALONE_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build core and tests
+        run: cmake --build build-core --config Release --parallel
+
+      - name: Run core tests
+        run: ctest --test-dir build-core --build-config Release --output-on-failure
+
+  build:
+    name: Build Geode Mod (Windows x64)
+    runs-on: windows-latest
+    needs: core-tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
       - name: Build Veyron Proyect
         id: geode-build
         uses: geode-sdk/build-geode-mod@main
@@ -43,7 +54,6 @@ jobs:
           target: Win64
           build-config: Release
 
-      # 3. Verify that the .geode package exists
       - name: Verify Geode package
         shell: pwsh
         env:
@@ -54,24 +64,18 @@ jobs:
           }
 
           $packages = @(
-            Get-ChildItem `
-              -LiteralPath $env:BUILD_OUTPUT `
-              -Filter "*.geode" `
-              -File `
-              -Recurse
+            Get-ChildItem -LiteralPath $env:BUILD_OUTPUT -Filter "*.geode" -File -Recurse
           )
 
           if ($packages.Count -eq 0) {
             throw "No .geode package was generated."
           }
 
-          Write-Host "Veyron package successfully generated:"
-
+          Write-Host "Generated package(s):"
           foreach ($package in $packages) {
             Write-Host $package.FullName
           }
 
-      # 4. Upload the final .geode package
       - name: Upload Veyron Geode package
         uses: actions/upload-artifact@v7
         with:

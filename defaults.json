@@ -12,21 +12,39 @@
     "showsSimulationTick": true,
     "showsInputCount": true,
     "showsApproximateCps": true,
-    "windowValue": "unknown-until-validated"
+    "windowValue": "unknown-until-validated",
+    "panelStyle": "dark-translucent",
+    "accent": "state-dependent",
+    "layout": "compact-multiline",
+    "panelWidth": 244,
+    "panelHeight": 120,
+    "font": "chatFont.fnt",
+    "opacity": 0.88,
+    "showsLastAction": true,
+    "showsSafeMode": true
   },
   "audio": {
     "enabled": true,
     "runtimeMuteDefault": false,
     "masterVolume": 0.55,
-    "minFrequencyHz": 95.0,
-    "maxFrequencyHz": 880.0,
+    "minFrequencyHz": 95,
+    "maxFrequencyHz": 880,
     "waveform": "sine",
     "durationMs": 85,
-    "pitchMapsTo": "inter-press-frame-interval"
+    "pitchMapsTo": "inter-press-frame-interval",
+    "runtimeToggle": "persistent-geode-setting",
+    "frequencyMinHzRange": [
+      50,
+      500
+    ],
+    "frequencyMaxHzRange": [
+      200,
+      2000
+    ]
   },
   "analysis": {
     "windowMeasurement": "not-implemented",
-    "nominalTickRateHz": 240.0,
+    "nominalTickRateHz": 240,
     "tickRateValidated": false,
     "capturePlayer1": true,
     "capturePlayer2": true
@@ -39,5 +57,21 @@
     "safeMode": true,
     "safeModeRequiresPractice": true,
     "releasesHeldInputsOnStopPauseResetQuit": true
+  },
+  "projectVersion": "0.3.0",
+  "ui": {
+    "popupStyle": "dark-panel-with-cyan-accent",
+    "popupWidth": 360,
+    "popupHeight": 250,
+    "buttonLayout": "fixed-three-column-grid",
+    "buttons": [
+      "REC",
+      "STOP",
+      "PLAY",
+      "SAVE",
+      "LOAD",
+      "HUD",
+      "SOUND"
+    ]
   }
 }
