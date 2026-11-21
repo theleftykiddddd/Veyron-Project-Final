@@ -1005,6 +1005,19 @@ class $modify(VeyronPlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
 
+        // Defensive hand-off: if a previous layer did not reach onQuit before
+        // a new one is initialized, finish its recording and release all
+        // synthetic inputs while the old PlayLayer pointer is still valid.
+        if (g_activePlayLayer && g_activePlayLayer != this) {
+            auto* previousLayer = g_activePlayLayer;
+            if (g_recorder.state() == veyron::RecorderState::Recording) {
+                finishRecording(true);
+            }
+            stopReplay(previousLayer);
+            clearHud();
+            g_activePlayLayer = nullptr;
+        }
+
         g_activePlayLayer = this;
         g_gameFrame = 0;
         g_hudRefreshTimer = 0.f;
