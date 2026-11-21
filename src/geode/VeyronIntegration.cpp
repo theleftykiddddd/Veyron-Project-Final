@@ -489,7 +489,8 @@ ccColor3B hudAccentColor() {
 std::string buildHudText() {
     std::string text = "VEYRON  /  " + stateName();
 
-    if (settingBool("safe-mode", true)) {
+    if (settingBool("hud-show-safe-mode", true) &&
+        settingBool("safe-mode", true)) {
         text += "  /  SAFE";
     }
 
@@ -981,7 +982,9 @@ class $modify(VeyronPlayLayer, PlayLayer) {
         if (g_activePlayLayer != this || !g_hudLabel) return;
 
         g_hudRefreshTimer += dt;
-        if (g_hudRefreshTimer >= 0.10f) {
+        const float refreshInterval = static_cast<float>(
+            std::clamp(settingDouble("hud-refresh-interval", 0.10), 0.05, 0.50));
+        if (g_hudRefreshTimer >= refreshInterval) {
             g_hudRefreshTimer = 0.f;
             updateHudText();
         }
