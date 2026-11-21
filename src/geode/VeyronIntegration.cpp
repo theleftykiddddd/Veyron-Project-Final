@@ -28,6 +28,7 @@
 #include <string>
 #include <system_error>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 using namespace geode::prelude;
@@ -71,6 +72,7 @@ bool g_replayFinishedThisTick = false;
 float g_hudRefreshTimer = 0.f;
 std::deque<std::uint64_t> g_recentPressFrames;
 std::set<HeldInput> g_replayHeldInputs;
+std::unordered_map<std::string, std::filesystem::path> g_toneFileCache;
 std::string g_lastStatus = "Ready";
 
 bool settingBool(char const* key, bool fallback) {
@@ -139,19 +141,30 @@ std::size_t recentCpsCount() {
 // The legacy Windows audio backend does not consistently support pitch changes.
 std::filesystem::path makeToneFile(double frequencyHz, double volume) {
     auto mod = Mod::get();
-    if (!mod) return {};
+    if (!mod || !std::isfinite(frequencyHz) || !std::isfinite(volume)) return {};
+
+    const auto safeVolume = std::clamp(volume, 0.0, 1.0);
+    if (safeVolume <= 0.0 || frequencyHz < 20.0 || frequencyHz > 20'000.0) return {};
+
+    const auto roundedFrequency = static_cast<int>(std::lround(frequencyHz));
+    const auto volumePercent = static_cast<int>(std::lround(safeVolume * 100.0));
+    const auto fileName = "veyron_" + std::to_string(roundedFrequency) +
+                          "hz_" + std::to_string(volumePercent) + "v.wav";
+
+    if (auto it = g_toneFileCache.find(fileName); it != g_toneFileCache.end()) {
+        return it->second;
+    }
 
     std::error_code ec;
     auto toneDir = mod->getSaveDir() / "tones";
     std::filesystem::create_directories(toneDir, ec);
     if (ec) return {};
 
-    const auto safeVolume = std::clamp(volume, 0.0, 1.0);
-    const auto roundedFrequency = static_cast<int>(std::lround(frequencyHz));
-    const auto volumePercent = static_cast<int>(std::lround(safeVolume * 100.0));
-    auto path = toneDir / ("veyron_" + std::to_string(roundedFrequency) +
-                           "hz_" + std::to_string(volumePercent) + "v.wav");
-    if (std::filesystem::exists(path, ec) && !ec) return path;
+    auto path = toneDir / fileName;
+    if (std::filesystem::exists(path, ec) && !ec) {
+        g_toneFileCache.emplace(fileName, path);
+        return path;
+    }
     ec.clear();
 
     constexpr std::uint16_t channels = 1;
@@ -216,6 +229,7 @@ std::filesystem::path makeToneFile(double frequencyHz, double volume) {
         std::filesystem::remove(path, ec);
         return {};
     }
+    g_toneFileCache.emplace(fileName, path);
     return path;
 }
 
@@ -265,11 +279,20 @@ void releasePhysicalReplayInputs(PlayLayer* layer, bool clearLogicalState) {
         return;
     }
 
-    for (auto const& held : g_replayHeldInputs) {
-        rawInject(layer, false, held.button, held.player2);
+    // If playback was paused, the physical releases have already happened.
+    // Avoid emitting duplicate release events when STOP/reset/quit follows.
+    if (!g_replayKeysTemporarilyReleased) {
+        for (auto const& held : g_replayHeldInputs) {
+            rawInject(layer, false, held.button, held.player2);
+        }
     }
-    g_replayKeysTemporarilyReleased = !clearLogicalState && !g_replayHeldInputs.empty();
-    if (clearLogicalState) g_replayHeldInputs.clear();
+
+    g_replayKeysTemporarilyReleased =
+        !clearLogicalState && !g_replayHeldInputs.empty();
+    if (clearLogicalState) {
+        g_replayHeldInputs.clear();
+        g_replayKeysTemporarilyReleased = false;
+    }
 }
 
 void restorePhysicalReplayInputs(PlayLayer* layer) {
