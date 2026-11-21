@@ -628,6 +628,11 @@ void toggleMute() {
         mod->setSettingValue<bool>("audio-enabled", nextEnabled);
     }
 
+    // Do not carry an old interval across a mute/unmute transition.
+    g_hasRealPressFrame = false;
+    g_hasReplayPressFrame = false;
+    g_lastRealPressFrame = 0;
+    g_lastReplayPressFrame = 0;
     g_lastStatus = nextEnabled ? "Chimes enabled" : "Chimes muted";
 }
 
@@ -1043,17 +1048,22 @@ class $modify(VeyronPauseLayer, PauseLayer) {
         auto const win = CCDirector::sharedDirector()->getWinSize();
         auto menu = CCMenu::create();
         if (!menu) return;
+        menu->setID("veyron-pause-menu");
 
         auto sprite = ButtonSprite::create(
-            "VEYRON", "bigFont.fnt", "GJ_button_05.png", 0.50f);
+            "VEYRON", "bigFont.fnt", "GJ_button_05.png", 0.46f);
         if (!sprite) return;
 
         auto button = CCMenuItemSpriteExtra::create(
             sprite, this, menu_selector(VeyronPauseLayer::onOpenVeyron));
         if (!button) return;
 
+        button->setID("veyron-pause-button");
         menu->addChild(button);
-        menu->setPosition({win.width - 66.f, win.height - 58.f});
+
+        // The original top-right location overlaps the pause/settings gear on
+        // common 16:9 layouts. Move the entry slightly inward and downward.
+        menu->setPosition({win.width - 84.f, win.height - 142.f});
         this->addChild(menu, 10'000);
     }
 
