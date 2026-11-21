@@ -644,6 +644,7 @@ protected:
         if (!Popup::init(popupWidth, popupHeight)) return false;
 
         this->setTitle("VEYRON PROYECT", "goldFont.fnt", 0.62f, 16.f);
+        if (m_title) m_title->setColor({207, 233, 246});
 
         const auto size = m_mainLayer->getContentSize();
 
