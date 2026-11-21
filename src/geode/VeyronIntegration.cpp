@@ -66,7 +66,6 @@ bool g_hasRealPressFrame = false;
 bool g_hasReplayPressFrame = false;
 bool g_injectedCall = false;
 bool g_runtimeHudVisible = true;
-bool g_runtimeMuted = false;
 bool g_replayKeysTemporarilyReleased = false;
 bool g_replayFinishedThisTick = false;
 float g_hudRefreshTimer = 0.f;
@@ -221,7 +220,7 @@ std::filesystem::path makeToneFile(double frequencyHz, double volume) {
 }
 
 void playToneForInterval(std::uint64_t frame, bool replaySource) {
-    if (!settingBool("audio-enabled", true) || g_runtimeMuted) return;
+    if (!settingBool("audio-enabled", true)) return;
 
     auto& previousFrame = replaySource ? g_lastReplayPressFrame : g_lastRealPressFrame;
     auto& hasPrevious = replaySource ? g_hasReplayPressFrame : g_hasRealPressFrame;
@@ -233,11 +232,13 @@ void playToneForInterval(std::uint64_t frame, bool replaySource) {
     previousFrame = frame;
     hasPrevious = true;
 
+    double minHz = std::clamp(settingDouble("audio-min-hz", 95.0), 50.0, 500.0);
+    double maxHz = std::clamp(settingDouble("audio-max-hz", 880.0), 200.0, 2000.0);
+    if (maxHz <= minHz) maxHz = std::min(2000.0, minHz + 1.0);
+
     const double frequency = veyron::WindowAnalyzer::toneFrequencyHz(
-        intervalFrames, 1, 24,
-        settingDouble("audio-min-hz", 95.0),
-        settingDouble("audio-max-hz", 880.0));
-    const auto volume = settingDouble("master-volume", 0.55);
+        intervalFrames, 1, 24, minHz, maxHz);
+    const auto volume = std::clamp(settingDouble("master-volume", 0.55), 0.0, 1.0);
     const auto file = makeToneFile(frequency, volume);
     if (file.empty()) return;
 
@@ -485,6 +486,35 @@ ccColor3B hudAccentColor() {
     return {91, 150, 205};
 }
 
+std::string buildHudText() {
+    std::string text = "VEYRON  /  " + stateName();
+
+    if (settingBool("safe-mode", true)) {
+        text += "  /  SAFE";
+    }
+
+    if (settingBool("hud-show-frame", true)) {
+        text += "\nFRAME    " + std::to_string(g_gameFrame);
+    }
+    if (settingBool("hud-show-inputs", true)) {
+        text += "\nINPUTS   " + std::to_string(recordedInputCount());
+    }
+    if (settingBool("hud-show-cps", true)) {
+        text += "\nCPS ~    " + std::to_string(recentCpsCount());
+    }
+    if (settingBool("hud-show-last-action", true) && !g_lastStatus.empty()) {
+        auto lastAction = g_lastStatus;
+        constexpr std::size_t maxStatusChars = 32;
+        if (lastAction.size() > maxStatusChars) {
+            lastAction.resize(maxStatusChars - 3);
+            lastAction += "...";
+        }
+        text += "\n" + lastAction;
+    }
+
+    return text;
+}
+
 void clearHud() {
     if (g_hudPanel) {
         g_hudPanel->removeFromParentAndCleanup(true);
@@ -497,19 +527,8 @@ void clearHud() {
 void updateHudText() {
     if (!g_hudLabel || !g_activePlayLayer) return;
 
-    const auto cps = recentCpsCount();
-    const auto inputCount = recordedInputCount();
-    const auto state = stateName();
-
-    char text[240]{};
-    std::snprintf(
-        text, sizeof(text),
-        "VEYRON  /  %s\nFRAME  %llu\nINPUTS  %llu   CPS  %zu\nWINDOW  UNMEASURED",
-        state.c_str(),
-        static_cast<unsigned long long>(g_gameFrame),
-        static_cast<unsigned long long>(inputCount),
-        cps);
-    g_hudLabel->setString(text);
+    const auto text = buildHudText();
+    g_hudLabel->setString(text.c_str());
 
     if (g_hudAccent) {
         g_hudAccent->setColor(hudAccentColor());
@@ -526,7 +545,7 @@ void attachHud(PlayLayer* layer, bool readPersistentSetting = true) {
     if (!g_runtimeHudVisible) return;
 
     constexpr float panelWidth = 244.f;
-    constexpr float panelHeight = 86.f;
+    constexpr float panelHeight = 104.f;
 
     // A translucent panel makes the HUD readable over bright level decoration.
     g_hudPanel = CCLayerColor::create(
@@ -536,12 +555,15 @@ void attachHud(PlayLayer* layer, bool readPersistentSetting = true) {
     const float hudScale = static_cast<float>(
         std::clamp(settingDouble("hud-scale", 0.80), 0.5, 1.5));
     g_hudPanel->setScale(hudScale);
+    const auto opacity = std::clamp(settingDouble("hud-opacity", 0.88), 0.25, 1.0);
+    g_hudPanel->setOpacity(static_cast<GLubyte>(std::lround(opacity * 255.0)));
     g_hudPanel->setZOrder(10'000);
     layer->addChild(g_hudPanel, 10'000);
 
     g_hudAccent = CCLayerColor::create(
         ccColor4B{55, 205, 232, 255}, panelWidth, 3.f);
     if (g_hudAccent) {
+        g_hudAccent->setAnchorPoint({0.f, 0.f});
         g_hudAccent->setPosition({0.f, panelHeight - 3.f});
         g_hudPanel->addChild(g_hudAccent, 2);
     }
@@ -553,7 +575,7 @@ void attachHud(PlayLayer* layer, bool readPersistentSetting = true) {
     }
     g_hudLabel->setAnchorPoint({0.f, 1.f});
     g_hudLabel->setPosition({11.f, panelHeight - 10.f});
-    g_hudLabel->setScale(0.48f);
+    g_hudLabel->setScale(0.43f);
     g_hudLabel->setColor({226, 236, 247});
     g_hudPanel->addChild(g_hudLabel, 3);
 
@@ -594,8 +616,14 @@ void toggleHud() {
 }
 
 void toggleMute() {
-    g_runtimeMuted = !g_runtimeMuted;
-    g_lastStatus = g_runtimeMuted ? "Chimes muted" : "Chimes enabled (settings permitting)";
+    const bool currentlyEnabled = settingBool("audio-enabled", true);
+    const bool nextEnabled = !currentlyEnabled;
+
+    if (auto mod = Mod::get()) {
+        mod->setSettingValue<bool>("audio-enabled", nextEnabled);
+    }
+
+    g_lastStatus = nextEnabled ? "Chimes enabled" : "Chimes muted";
 }
 
 // Flat, fixed-size controls avoid ButtonSprite's text-dependent widths.
@@ -610,16 +638,19 @@ CCLayerColor* makeControlButton(
 ) {
     auto frame = CCLayerColor::create(accent, width, height);
     if (!frame) return nullptr;
+    frame->setAnchorPoint({0.5f, 0.5f});
 
     auto face = CCLayerColor::create(
         faceColor, width - 4.f, height - 4.f);
     if (!face) return nullptr;
+    face->setAnchorPoint({0.f, 0.f});
     face->setPosition({2.f, 2.f});
     frame->addChild(face, 1);
 
     auto stripe = CCLayerColor::create(
         accent, 3.f, height - 12.f);
     if (stripe) {
+        stripe->setAnchorPoint({0.f, 0.f});
         stripe->setPosition({5.f, 6.f});
         face->addChild(stripe, 1);
     }
@@ -659,8 +690,9 @@ protected:
             ccColor4B{12, 17, 27, 246},
             size.width - 18.f, size.height - 18.f);
         if (backdrop) {
+            backdrop->setAnchorPoint({0.f, 0.f});
             backdrop->setPosition({9.f, 9.f});
-            m_mainLayer->addChild(backdrop, -100);
+            m_mainLayer->addChild(backdrop, 1);
         }
 
         auto subtitle = CCLabelBMFont::create(
@@ -669,7 +701,7 @@ protected:
             subtitle->setScale(0.46f);
             subtitle->setColor({133, 160, 184});
             subtitle->setPosition({size.width / 2.f, 211.f});
-            m_mainLayer->addChild(subtitle, 1);
+            m_mainLayer->addChild(subtitle, 3);
         }
 
         // Status card: one line for the current state, one for the last action.
@@ -677,12 +709,16 @@ protected:
             ccColor4B{22, 31, 45, 255},
             size.width - 34.f, 42.f);
         if (statusCard) {
+            statusCard->setAnchorPoint({0.f, 0.f});
             statusCard->setPosition({17.f, 152.f});
-            m_mainLayer->addChild(statusCard, 1);
+            m_mainLayer->addChild(statusCard, 2);
 
             auto statusAccent = CCLayerColor::create(
                 ccColor4B{48, 204, 226, 255}, 3.f, 42.f);
-            if (statusAccent) statusCard->addChild(statusAccent, 1);
+            if (statusAccent) {
+                statusAccent->setAnchorPoint({0.f, 0.f});
+                statusCard->addChild(statusAccent, 1);
+            }
 
             m_statusLabel = CCLabelBMFont::create("", "chatFont.fnt");
             if (m_statusLabel) {
@@ -792,8 +828,7 @@ protected:
                 g_runtimeHudVisible ? "HUD ON" : "HUD OFF");
         }
 
-        const bool soundEnabled =
-            settingBool("audio-enabled", true) && !g_runtimeMuted;
+        const bool soundEnabled = settingBool("audio-enabled", true);
         if (m_soundToggleLabel) {
             m_soundToggleLabel->setString(
                 soundEnabled ? "SOUND ON" : "SOUND OFF");
@@ -931,7 +966,6 @@ class $modify(VeyronPlayLayer, PlayLayer) {
         g_recentPressFrames.clear();
         g_hasRealPressFrame = false;
         g_hasReplayPressFrame = false;
-        g_runtimeMuted = false;
         g_replayHeldInputs.clear();
         g_replayKeysTemporarilyReleased = false;
         g_replayFinishedThisTick = false;
