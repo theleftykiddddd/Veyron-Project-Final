@@ -53,6 +53,8 @@ veyron::Recorder g_recorder;
 veyron::ReplayScheduler g_replay;
 std::optional<veyron::Macro> g_currentMacro;
 PlayLayer* g_activePlayLayer = nullptr;
+CCLayerColor* g_hudPanel = nullptr;
+CCLayerColor* g_hudAccent = nullptr;
 CCLabelBMFont* g_hudLabel = nullptr;
 
 std::uint64_t g_gameFrame = 0;
@@ -473,73 +475,117 @@ void startOrTogglePlayback() {
     g_lastStatus = "Playback started";
 }
 
+ccColor3B hudAccentColor() {
+    const auto state = stateName();
+    if (state == "REC") return {65, 222, 145};
+    if (state == "PLAY") return {55, 205, 232};
+    if (state == "PAUSED") return {245, 185, 82};
+    if (state == "DONE") return {155, 171, 190};
+    return {91, 150, 205};
+}
+
+void clearHud() {
+    if (g_hudPanel) {
+        g_hudPanel->removeFromParentAndCleanup(true);
+    }
+    g_hudPanel = nullptr;
+    g_hudAccent = nullptr;
+    g_hudLabel = nullptr;
+}
+
 void updateHudText() {
     if (!g_hudLabel || !g_activePlayLayer) return;
 
     const auto cps = recentCpsCount();
     const auto inputCount = recordedInputCount();
     const auto state = stateName();
-    const auto safe = settingBool("safe-mode", true) ? "SAFE" : "FULL";
 
-    char text[320]{};
+    char text[240]{};
     std::snprintf(
         text, sizeof(text),
-        "VEYRON  [%s | %s]\nTICK: %llu   INPUTS: %llu\nCPS (1s): %zu   WINDOW: ?\n%s",
-        state.c_str(), safe,
+        "VEYRON  /  %s\nFRAME  %llu\nINPUTS  %llu   CPS  %zu\nWINDOW  UNMEASURED",
+        state.c_str(),
         static_cast<unsigned long long>(g_gameFrame),
         static_cast<unsigned long long>(inputCount),
-        cps, g_lastStatus.c_str());
+        cps);
     g_hudLabel->setString(text);
+
+    if (g_hudAccent) {
+        g_hudAccent->setColor(hudAccentColor());
+    }
 }
 
 void attachHud(PlayLayer* layer, bool readPersistentSetting = true) {
     if (!layer) return;
-    if (g_hudLabel) {
-        g_hudLabel->removeFromParentAndCleanup(true);
-        g_hudLabel = nullptr;
-    }
+    clearHud();
 
     if (readPersistentSetting) {
         g_runtimeHudVisible = settingBool("hud-enabled", true);
     }
     if (!g_runtimeHudVisible) return;
 
-    g_hudLabel = CCLabelBMFont::create("VEYRON", "bigFont.fnt");
-    if (!g_hudLabel) return;
-    g_hudLabel->setAnchorPoint({1.f, 1.f});
-    g_hudLabel->setScale(static_cast<float>(settingDouble("hud-scale", 0.80)));
-    g_hudLabel->setOpacity(225);
-    g_hudLabel->setZOrder(10'000);
-    layer->addChild(g_hudLabel, 10'000);
+    constexpr float panelWidth = 244.f;
+    constexpr float panelHeight = 86.f;
+
+    // A translucent panel makes the HUD readable over bright level decoration.
+    g_hudPanel = CCLayerColor::create(
+        ccColor4B{12, 18, 29, 226}, panelWidth, panelHeight);
+    if (!g_hudPanel) return;
+
+    const float hudScale = static_cast<float>(
+        std::clamp(settingDouble("hud-scale", 0.80), 0.5, 1.5));
+    g_hudPanel->setScale(hudScale);
+    g_hudPanel->setZOrder(10'000);
+    layer->addChild(g_hudPanel, 10'000);
+
+    g_hudAccent = CCLayerColor::create(
+        ccColor4B{55, 205, 232, 255}, panelWidth, 3.f);
+    if (g_hudAccent) {
+        g_hudAccent->setPosition({0.f, panelHeight - 3.f});
+        g_hudPanel->addChild(g_hudAccent, 2);
+    }
+
+    g_hudLabel = CCLabelBMFont::create("", "chatFont.fnt");
+    if (!g_hudLabel) {
+        clearHud();
+        return;
+    }
+    g_hudLabel->setAnchorPoint({0.f, 1.f});
+    g_hudLabel->setPosition({11.f, panelHeight - 10.f});
+    g_hudLabel->setScale(0.48f);
+    g_hudLabel->setColor({226, 236, 247});
+    g_hudPanel->addChild(g_hudLabel, 3);
 
     const auto win = CCDirector::sharedDirector()->getWinSize();
     const auto position = settingString("hud-position", "top-right");
     if (position == "top-left") {
-        g_hudLabel->setAnchorPoint({0.f, 1.f});
-        g_hudLabel->setPosition({14.f, win.height - 14.f});
+        g_hudPanel->setAnchorPoint({0.f, 1.f});
+        g_hudPanel->setPosition({14.f, win.height - 14.f});
     } else if (position == "bottom-left") {
-        g_hudLabel->setAnchorPoint({0.f, 0.f});
-        g_hudLabel->setPosition({14.f, 14.f});
+        g_hudPanel->setAnchorPoint({0.f, 0.f});
+        g_hudPanel->setPosition({14.f, 14.f});
     } else if (position == "bottom-right") {
-        g_hudLabel->setAnchorPoint({1.f, 0.f});
-        g_hudLabel->setPosition({win.width - 14.f, 14.f});
+        g_hudPanel->setAnchorPoint({1.f, 0.f});
+        g_hudPanel->setPosition({win.width - 14.f, 14.f});
     } else {
-        g_hudLabel->setAnchorPoint({1.f, 1.f});
-        g_hudLabel->setPosition({win.width - 14.f, win.height - 14.f});
+        g_hudPanel->setAnchorPoint({1.f, 1.f});
+        g_hudPanel->setPosition({win.width - 14.f, win.height - 14.f});
     }
+
     updateHudText();
 }
 
 void toggleHud() {
     g_runtimeHudVisible = !g_runtimeHudVisible;
+
     // Keep the pause-popup toggle synchronized with Geode's persistent setting.
     if (auto mod = Mod::get()) {
         mod->setSettingValue<bool>("hud-enabled", g_runtimeHudVisible);
     }
+
     if (!g_activePlayLayer) return;
     if (!g_runtimeHudVisible) {
-        if (g_hudLabel) g_hudLabel->removeFromParentAndCleanup(true);
-        g_hudLabel = nullptr;
+        clearHud();
     } else {
         attachHud(g_activePlayLayer, false);
         g_runtimeHudVisible = true;
@@ -551,58 +597,184 @@ void toggleMute() {
     g_lastStatus = g_runtimeMuted ? "Chimes muted" : "Chimes enabled (settings permitting)";
 }
 
+// Flat, fixed-size controls avoid ButtonSprite's text-dependent widths.
+// All buttons use the same geometry so translated/long labels cannot overlap.
+CCLayerColor* makeControlButton(
+    char const* caption,
+    ccColor4B accent,
+    ccColor4B faceColor,
+    float width,
+    float height,
+    CCLabelBMFont** labelOut = nullptr
+) {
+    auto frame = CCLayerColor::create(accent, width, height);
+    if (!frame) return nullptr;
+
+    auto face = CCLayerColor::create(
+        faceColor, width - 4.f, height - 4.f);
+    if (!face) return nullptr;
+    face->setPosition({2.f, 2.f});
+    frame->addChild(face, 1);
+
+    auto stripe = CCLayerColor::create(
+        accent, 3.f, height - 12.f);
+    if (stripe) {
+        stripe->setPosition({5.f, 6.f});
+        face->addChild(stripe, 1);
+    }
+
+    auto label = CCLabelBMFont::create(caption, "bigFont.fnt");
+    if (label) {
+        label->setScale(0.36f);
+        label->setColor({242, 247, 252});
+        label->setPosition({(width - 4.f) / 2.f, (height - 4.f) / 2.f});
+        face->addChild(label, 2);
+        if (labelOut) *labelOut = label;
+    }
+
+    return frame;
+}
+
 class VeyronControlPopup final : public Popup {
 protected:
     bool init() {
-        if (!Popup::init(330.f, 228.f)) return false;
-        this->setTitle("VEYRON PROYECT");
+        constexpr float popupWidth = 360.f;
+        constexpr float popupHeight = 250.f;
+        if (!Popup::init(popupWidth, popupHeight)) return false;
 
-        auto const size = m_mainLayer->getContentSize();
-        auto status = CCLabelBMFont::create("", "bigFont.fnt");
-        if (status) {
-            status->setScale(0.34f);
-            status->setPosition({size.width / 2.f, size.height - 54.f});
-            status->setID("veyron-status"_spr);
-            m_mainLayer->addChild(status);
-            m_statusLabel = status;
+        this->setTitle("VEYRON PROYECT", "goldFont.fnt", 0.62f, 16.f);
+
+        const auto size = m_mainLayer->getContentSize();
+
+        // Keep the Geometry Dash nine-slice border, but replace the brown body
+        // with a dark panel. The overlay sits behind all controls.
+        if (m_bgSprite) {
+            m_bgSprite->setColor({105, 128, 158});
+            m_bgSprite->setOpacity(255);
+        }
+
+        auto backdrop = CCLayerColor::create(
+            ccColor4B{12, 17, 27, 246},
+            size.width - 18.f, size.height - 18.f);
+        if (backdrop) {
+            backdrop->setPosition({9.f, 9.f});
+            m_mainLayer->addChild(backdrop, -100);
+        }
+
+        auto topAccent = CCLayerColor::create(
+            ccColor4B{48, 204, 226, 255},
+            size.width - 34.f, 2.f);
+        if (topAccent) {
+            topAccent->setPosition({17.f, size.height - 36.f});
+            m_mainLayer->addChild(topAccent, -50);
+        }
+
+        auto subtitle = CCLabelBMFont::create(
+            "MACRO CONTROL CENTER", "chatFont.fnt");
+        if (subtitle) {
+            subtitle->setScale(0.46f);
+            subtitle->setColor({133, 160, 184});
+            subtitle->setPosition({size.width / 2.f, 211.f});
+            m_mainLayer->addChild(subtitle, 1);
+        }
+
+        // Status card: one line for the current state, one for the last action.
+        auto statusCard = CCLayerColor::create(
+            ccColor4B{22, 31, 45, 255},
+            size.width - 34.f, 42.f);
+        if (statusCard) {
+            statusCard->setPosition({17.f, 157.f});
+            m_mainLayer->addChild(statusCard, 1);
+
+            auto statusAccent = CCLayerColor::create(
+                ccColor4B{48, 204, 226, 255}, 3.f, 42.f);
+            if (statusAccent) statusCard->addChild(statusAccent, 1);
+
+            m_statusLabel = CCLabelBMFont::create("", "chatFont.fnt");
+            if (m_statusLabel) {
+                m_statusLabel->setAnchorPoint({0.f, 0.5f});
+                m_statusLabel->setScale(0.48f);
+                m_statusLabel->setColor({232, 240, 248});
+                m_statusLabel->setPosition({12.f, 28.f});
+                statusCard->addChild(m_statusLabel, 2);
+            }
+
+            m_detailLabel = CCLabelBMFont::create("", "chatFont.fnt");
+            if (m_detailLabel) {
+                m_detailLabel->setAnchorPoint({0.f, 0.5f});
+                m_detailLabel->setScale(0.42f);
+                m_detailLabel->setColor({139, 161, 184});
+                m_detailLabel->setPosition({12.f, 11.f});
+                statusCard->addChild(m_detailLabel, 2);
+            }
         }
 
         auto menu = CCMenu::create();
-        menu->setPosition({size.width / 2.f, size.height / 2.f - 13.f});
-        m_mainLayer->addChild(menu);
+        if (!menu) return false;
+        menu->setPosition({size.width / 2.f, 129.f});
+        m_mainLayer->addChild(menu, 5);
 
-        auto addButton = [menu, this](char const* label, char const* sprite,
-                                      CCPoint pos, SEL_MenuHandler callback) {
-            auto visual = ButtonSprite::create(label, "bigFont.fnt", sprite, 0.62f);
+        auto addButton = [menu, this](
+            char const* caption,
+            ccColor4B accent,
+            ccColor4B face,
+            float width,
+            CCPoint pos,
+            SEL_MenuHandler callback,
+            CCLabelBMFont** labelOut = nullptr
+        ) {
+            auto visual = makeControlButton(
+                caption, accent, face, width, 32.f, labelOut);
             if (!visual) return;
-            auto item = CCMenuItemSpriteExtra::create(visual, this, callback);
+
+            auto item = CCMenuItemSpriteExtra::create(
+                visual, this, callback);
             if (!item) return;
             item->setPosition(pos);
             menu->addChild(item);
         };
 
-        addButton("REC", "GJ_button_01.png", {-91.f, 35.f}, menu_selector(VeyronControlPopup::onRecord));
-        addButton("STOP", "GJ_button_06.png", {0.f, 35.f}, menu_selector(VeyronControlPopup::onStop));
-        addButton("PLAY / PAUSE", "GJ_button_02.png", {91.f, 35.f}, menu_selector(VeyronControlPopup::onPlayPause));
-        addButton("SAVE VPR", "GJ_button_04.png", {-91.f, -12.f}, menu_selector(VeyronControlPopup::onSave));
-        addButton("LOAD VPR", "GJ_button_05.png", {0.f, -12.f}, menu_selector(VeyronControlPopup::onLoad));
-        addButton("HUD", "GJ_button_03.png", {91.f, -12.f}, menu_selector(VeyronControlPopup::onHud));
+        constexpr ccColor4B recAccent{65, 222, 145, 255};
+        constexpr ccColor4B recFace{25, 54, 46, 255};
+        constexpr ccColor4B stopAccent{247, 99, 112, 255};
+        constexpr ccColor4B stopFace{60, 31, 39, 255};
+        constexpr ccColor4B playAccent{55, 205, 232, 255};
+        constexpr ccColor4B playFace{23, 50, 63, 255};
+        constexpr ccColor4B neutralAccent{106, 132, 161, 255};
+        constexpr ccColor4B neutralFace{29, 39, 53, 255};
+        constexpr ccColor4B hudAccent{177, 139, 255, 255};
+        constexpr ccColor4B hudFace{43, 36, 62, 255};
+        constexpr ccColor4B soundAccent{244, 185, 86, 255};
+        constexpr ccColor4B soundFace{56, 45, 29, 255};
 
-        auto soundButton = CCMenuItemSpriteExtra::create(
-            ButtonSprite::create("MUTE / SOUND", "bigFont.fnt", "GJ_button_03.png", 0.55f),
-            this, menu_selector(VeyronControlPopup::onMute));
-        if (soundButton) {
-            soundButton->setPosition({0.f, -58.f});
-            menu->addChild(soundButton);
-        }
+        // 3-column grid. Button width and row spacing are fixed and validated
+        // against the popup width (94 px buttons, 24 px horizontal gaps).
+        addButton("REC", recAccent, recFace, 94.f,
+            {-118.f, 0.f}, menu_selector(VeyronControlPopup::onRecord));
+        addButton("STOP", stopAccent, stopFace, 94.f,
+            {0.f, 0.f}, menu_selector(VeyronControlPopup::onStop));
+        addButton("PLAY", playAccent, playFace, 94.f,
+            {118.f, 0.f}, menu_selector(VeyronControlPopup::onPlayPause));
+
+        addButton("SAVE", neutralAccent, neutralFace, 94.f,
+            {-118.f, -44.f}, menu_selector(VeyronControlPopup::onSave));
+        addButton("LOAD", neutralAccent, neutralFace, 94.f,
+            {0.f, -44.f}, menu_selector(VeyronControlPopup::onLoad));
+        addButton("HUD ON", hudAccent, hudFace, 94.f,
+            {118.f, -44.f}, menu_selector(VeyronControlPopup::onHud),
+            &m_hudToggleLabel);
+
+        addButton("SOUND ON", soundAccent, soundFace, 138.f,
+            {0.f, -88.f}, menu_selector(VeyronControlPopup::onMute),
+            &m_soundToggleLabel);
 
         auto note = CCLabelBMFont::create(
-            "Window values are unmeasured. Options: Geode mod settings.",
-            "chatFont.fnt");
+            "TIMING WINDOWS ARE NOT MEASURED", "chatFont.fnt");
         if (note) {
-            note->setScale(0.48f);
-            note->setPosition({size.width / 2.f, 19.f});
-            m_mainLayer->addChild(note);
+            note->setScale(0.37f);
+            note->setColor({111, 132, 153});
+            note->setPosition({size.width / 2.f, 10.f});
+            m_mainLayer->addChild(note, 2);
         }
 
         refreshStatus();
@@ -610,25 +782,47 @@ protected:
     }
 
     void refreshStatus() {
-        if (!m_statusLabel) return;
-        std::string text = "STATE: " + stateName() + " | FRAMES: " +
-            std::to_string(g_gameFrame) + " | INPUTS: " +
-            std::to_string(recordedInputCount()) + "\n" + g_lastStatus;
-        m_statusLabel->setString(text.c_str());
+        char stateText[180]{};
+        std::snprintf(
+            stateText, sizeof(stateText),
+            "STATE  %s    FRAME  %llu    INPUTS  %llu",
+            stateName().c_str(),
+            static_cast<unsigned long long>(g_gameFrame),
+            static_cast<unsigned long long>(recordedInputCount()));
+
+        if (m_statusLabel) m_statusLabel->setString(stateText);
+        if (m_detailLabel) m_detailLabel->setString(g_lastStatus.c_str());
+
+        if (m_hudToggleLabel) {
+            m_hudToggleLabel->setString(
+                g_runtimeHudVisible ? "HUD ON" : "HUD OFF");
+        }
+
+        const bool soundEnabled =
+            settingBool("audio-enabled", true) && !g_runtimeMuted;
+        if (m_soundToggleLabel) {
+            m_soundToggleLabel->setString(
+                soundEnabled ? "SOUND ON" : "SOUND OFF");
+        }
     }
 
     void onRecord(CCObject*) {
         if (g_recorder.state() == veyron::RecorderState::Recording) {
             g_lastStatus = "Already recording";
-        } else beginRecording();
+        } else {
+            beginRecording();
+        }
         refreshStatus();
     }
 
     void onStop(CCObject*) {
-        const bool wasRecording = g_recorder.state() == veyron::RecorderState::Recording;
+        const bool wasRecording =
+            g_recorder.state() == veyron::RecorderState::Recording;
         if (wasRecording) finishRecording(true);
+
         if (g_activePlayLayer) stopReplay(g_activePlayLayer);
         else stopReplay(nullptr);
+
         if (!wasRecording) g_lastStatus = "Playback stopped";
         refreshStatus();
     }
@@ -671,6 +865,9 @@ public:
 
 private:
     CCLabelBMFont* m_statusLabel = nullptr;
+    CCLabelBMFont* m_detailLabel = nullptr;
+    CCLabelBMFont* m_hudToggleLabel = nullptr;
+    CCLabelBMFont* m_soundToggleLabel = nullptr;
 };
 
 } // namespace
@@ -781,10 +978,7 @@ class $modify(VeyronPlayLayer, PlayLayer) {
         if (g_activePlayLayer == this) {
             if (g_recorder.state() == veyron::RecorderState::Recording) finishRecording(true);
             stopReplay(this);
-            if (g_hudLabel) {
-                g_hudLabel->removeFromParentAndCleanup(true);
-                g_hudLabel = nullptr;
-            }
+            clearHud();
             g_activePlayLayer = nullptr;
             g_gameFrame = 0;
             g_recentPressFrames.clear();
@@ -804,7 +998,7 @@ class $modify(VeyronPauseLayer, PauseLayer) {
         if (!menu) return;
 
         auto sprite = ButtonSprite::create(
-            "VEYRON", "bigFont.fnt", "GJ_button_05.png", 0.60f);
+            "VEYRON", "bigFont.fnt", "GJ_button_05.png", 0.50f);
         if (!sprite) return;
 
         auto button = CCMenuItemSpriteExtra::create(
