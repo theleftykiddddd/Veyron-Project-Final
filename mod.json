@@ -5,9 +5,9 @@
   },
   "id": "alan.veyron-proyect",
   "name": "Veyron Proyect",
-  "version": "v0.2.0",
+  "version": "v0.3.0",
   "developer": "Alan",
-  "description": "Frame-based macro recording and playback, live HUD, VPR import/export, and input timing analysis for Geometry Dash.",
+  "description": "Frame-based macro recording and playback with a polished control panel, compact gameplay HUD, native VPR import/export, and input timing analysis.",
   "settings": {
     "hud-enabled": {
       "type": "bool",
