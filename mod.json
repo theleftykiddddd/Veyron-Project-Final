@@ -7,7 +7,7 @@
   "name": "Veyron Proyect",
   "version": "v0.3.0",
   "developer": "Alan",
-  "description": "Frame-based macro recording and playback with a polished control panel, compact gameplay HUD, native VPR import/export, and input timing analysis.",
+  "description": "Frame-based macro recording and playback with a polished control panel, compact configurable gameplay HUD, native VPR import/export, and input timing analysis.",
   "settings": {
     "hud-enabled": {
       "type": "bool",
@@ -51,8 +51,8 @@
       "name": "Chime volume",
       "description": "Amplitude of generated Veyron WAV chimes.",
       "default": 0.55,
-      "min": 0.0,
-      "max": 1.0,
+      "min": 0,
+      "max": 1,
       "control": {
         "slider": true,
         "slider-step": 0.05,
@@ -63,12 +63,12 @@
       "type": "float",
       "name": "Lowest chime frequency",
       "description": "Pitch used for a 1-frame interval.",
-      "default": 95.0,
-      "min": 50.0,
-      "max": 500.0,
+      "default": 95,
+      "min": 50,
+      "max": 500,
       "control": {
         "slider": true,
-        "slider-step": 5.0,
+        "slider-step": 5,
         "input": true
       }
     },
@@ -76,12 +76,12 @@
       "type": "float",
       "name": "Highest chime frequency",
       "description": "Pitch used for a 24-frame interval.",
-      "default": 880.0,
-      "min": 200.0,
-      "max": 2000.0,
+      "default": 880,
+      "min": 200,
+      "max": 2000,
       "control": {
         "slider": true,
-        "slider-step": 10.0,
+        "slider-step": 10,
         "input": true
       }
     },
@@ -123,6 +123,62 @@
           }
         ]
       }
+    },
+    "hud-opacity": {
+      "type": "float",
+      "name": "HUD opacity",
+      "description": "Background opacity of the in-game Veyron HUD.",
+      "default": 0.88,
+      "min": 0.25,
+      "max": 1,
+      "control": {
+        "slider": true,
+        "slider-step": 0.05,
+        "input": true
+      }
+    },
+    "hud-refresh-interval": {
+      "type": "float",
+      "name": "HUD refresh interval",
+      "description": "How often the HUD text is refreshed. Lower values update more frequently.",
+      "default": 0.1,
+      "min": 0.05,
+      "max": 0.5,
+      "control": {
+        "slider": true,
+        "slider-step": 0.05,
+        "input": true
+      }
+    },
+    "hud-show-frame": {
+      "type": "bool",
+      "name": "Show simulation frame",
+      "description": "Show the simulation tick counter on the HUD.",
+      "default": true
+    },
+    "hud-show-inputs": {
+      "type": "bool",
+      "name": "Show input count",
+      "description": "Show the number of recorded macro events on the HUD.",
+      "default": true
+    },
+    "hud-show-cps": {
+      "type": "bool",
+      "name": "Show approximate CPS",
+      "description": "Show the approximate number of presses over the rolling one-second tick window.",
+      "default": true
+    },
+    "hud-show-last-action": {
+      "type": "bool",
+      "name": "Show last action",
+      "description": "Show the latest Veyron status message on the HUD.",
+      "default": true
+    },
+    "hud-show-safe-mode": {
+      "type": "bool",
+      "name": "Show Safe Mode badge",
+      "description": "Show SAFE in the HUD header when Practice Mode protection is enabled.",
+      "default": true
     }
   }
 }
