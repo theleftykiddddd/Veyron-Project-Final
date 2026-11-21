@@ -6,7 +6,7 @@
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
-#include <SimpleAudioEngine.h>
+#include <Geode/binding/FMODAudioEngine.hpp>
 
 #include "veyron/FormatIO.hpp"
 #include "veyron/Recorder.hpp"
@@ -238,10 +238,12 @@ void playToneForInterval(std::uint64_t frame, bool replaySource) {
     const auto file = makeToneFile(frequency, volume);
     if (file.empty()) return;
 
-    // Generated WAV files encode their own amplitude, so Cocos gain stays 1.
+    // Use Geometry Dash's FMOD backend. SimpleAudioEngine is not shipped
+    // by the Geode SDK used for this target.
     const auto fileName = geode::utils::string::pathToString(file);
-    CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect(
-        fileName.c_str(), false, 1.f, 0.f, 1.f);
+    if (auto* audio = FMODAudioEngine::get()) {
+        audio->playEffect(fileName, 1.f, 0.f, 1.f);
+    }
 }
 
 void rawInject(PlayLayer* layer, bool down, int button, bool player2) {
