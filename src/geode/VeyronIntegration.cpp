@@ -661,14 +661,6 @@ protected:
             m_mainLayer->addChild(backdrop, -100);
         }
 
-        auto topAccent = CCLayerColor::create(
-            ccColor4B{48, 204, 226, 255},
-            size.width - 34.f, 2.f);
-        if (topAccent) {
-            topAccent->setPosition({17.f, size.height - 36.f});
-            m_mainLayer->addChild(topAccent, -50);
-        }
-
         auto subtitle = CCLabelBMFont::create(
             "MACRO CONTROL CENTER", "chatFont.fnt");
         if (subtitle) {
@@ -683,7 +675,7 @@ protected:
             ccColor4B{22, 31, 45, 255},
             size.width - 34.f, 42.f);
         if (statusCard) {
-            statusCard->setPosition({17.f, 157.f});
+            statusCard->setPosition({17.f, 152.f});
             m_mainLayer->addChild(statusCard, 1);
 
             auto statusAccent = CCLayerColor::create(
