@@ -3,6 +3,7 @@
 // connects them to the game's simulation hooks and Cocos UI.
 
 #include <Geode/Geode.hpp>
+#include <Geode/cocos/layers_scenes_transitions_nodes/CCLayer.h>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
