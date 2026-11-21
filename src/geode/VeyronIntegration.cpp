@@ -789,7 +789,8 @@ protected:
         addButton("STOP", stopAccent, stopFace, 94.f,
             {0.f, 0.f}, menu_selector(VeyronControlPopup::onStop), nullptr);
         addButton("PLAY", playAccent, playFace, 94.f,
-            {118.f, 0.f}, menu_selector(VeyronControlPopup::onPlayPause), nullptr);
+            {118.f, 0.f}, menu_selector(VeyronControlPopup::onPlayPause),
+            &m_playToggleLabel);
 
         addButton("SAVE", neutralAccent, neutralFace, 94.f,
             {-118.f, -44.f}, menu_selector(VeyronControlPopup::onSave), nullptr);
@@ -827,6 +828,16 @@ protected:
 
         if (m_statusLabel) m_statusLabel->setString(stateText);
         if (m_detailLabel) m_detailLabel->setString(g_lastStatus.c_str());
+
+        if (m_playToggleLabel) {
+            const char* playText = "PLAY";
+            if (g_replay.state() == veyron::ReplayState::Playing) {
+                playText = "PAUSE";
+            } else if (g_replay.state() == veyron::ReplayState::Paused) {
+                playText = "RESUME";
+            }
+            m_playToggleLabel->setString(playText);
+        }
 
         if (m_hudToggleLabel) {
             m_hudToggleLabel->setString(
@@ -900,6 +911,7 @@ public:
 private:
     CCLabelBMFont* m_statusLabel = nullptr;
     CCLabelBMFont* m_detailLabel = nullptr;
+    CCLabelBMFont* m_playToggleLabel = nullptr;
     CCLabelBMFont* m_hudToggleLabel = nullptr;
     CCLabelBMFont* m_soundToggleLabel = nullptr;
 };
