@@ -52,7 +52,7 @@ The following controls are available from Geode's mod settings. HUD and audio to
 
 The platform-neutral recorder, scheduler, VPR format, analysis bands, pitch mapping, and tests remain in `src/core` and `include/veyron`.
 
-The replay scheduler exposes `drainDueEvents`, returning complete press/release events for the Geode adapter. The earlier `advanceTo` counter interface remains available for existing callers.
+The replay scheduler exposes `drainDueEvents`, returning complete press/release events for the Geode adapter. The earlier `advanceTo` counter interface remains available for existing callers. Chime WAVs are cached in memory after their first generation, avoiding repeated filesystem lookups during fast input sequences.
 
 ## Timing limitations
 
@@ -71,7 +71,7 @@ GitHub Actions runs the platform-neutral C++ tests and then builds the Geode mod
 - Target: `Win64`
 - Artifact: `Veyron-Proyect-Windows-x64`
 
-Standalone core tests can also be run locally with CMake 3.21+ and a C++23 compiler:
+Standalone core tests can also be run locally with CMake 3.21+ and a C++23 compiler. The regression checks use explicit test helpers rather than `assert`, so they remain active in Release builds:
 
 ```bash
 cmake -S . -B build -DVEYRON_STANDALONE_TESTS=ON -DCMAKE_BUILD_TYPE=Release
