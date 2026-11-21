@@ -17,7 +17,7 @@
     "accent": "state-dependent",
     "layout": "compact-multiline",
     "panelWidth": 244,
-    "panelHeight": 104,
+    "panelHeight": 120,
     "font": "chatFont.fnt",
     "opacity": 0.88,
     "showsLastAction": true,
