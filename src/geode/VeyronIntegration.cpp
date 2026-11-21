@@ -721,7 +721,7 @@ protected:
             float width,
             CCPoint pos,
             SEL_MenuHandler callback,
-            CCLabelBMFont** labelOut = nullptr
+            CCLabelBMFont** labelOut
         ) {
             auto visual = makeControlButton(
                 caption, accent, face, width, 32.f, labelOut);
@@ -750,16 +750,16 @@ protected:
         // 3-column grid. Button width and row spacing are fixed and validated
         // against the popup width (94 px buttons, 24 px horizontal gaps).
         addButton("REC", recAccent, recFace, 94.f,
-            {-118.f, 0.f}, menu_selector(VeyronControlPopup::onRecord));
+            {-118.f, 0.f}, menu_selector(VeyronControlPopup::onRecord), nullptr);
         addButton("STOP", stopAccent, stopFace, 94.f,
-            {0.f, 0.f}, menu_selector(VeyronControlPopup::onStop));
+            {0.f, 0.f}, menu_selector(VeyronControlPopup::onStop), nullptr);
         addButton("PLAY", playAccent, playFace, 94.f,
-            {118.f, 0.f}, menu_selector(VeyronControlPopup::onPlayPause));
+            {118.f, 0.f}, menu_selector(VeyronControlPopup::onPlayPause), nullptr);
 
         addButton("SAVE", neutralAccent, neutralFace, 94.f,
-            {-118.f, -44.f}, menu_selector(VeyronControlPopup::onSave));
+            {-118.f, -44.f}, menu_selector(VeyronControlPopup::onSave), nullptr);
         addButton("LOAD", neutralAccent, neutralFace, 94.f,
-            {0.f, -44.f}, menu_selector(VeyronControlPopup::onLoad));
+            {0.f, -44.f}, menu_selector(VeyronControlPopup::onLoad), nullptr);
         addButton("HUD ON", hudAccent, hudFace, 94.f,
             {118.f, -44.f}, menu_selector(VeyronControlPopup::onHud),
             &m_hudToggleLabel);
