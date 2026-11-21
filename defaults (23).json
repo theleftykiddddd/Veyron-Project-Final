@@ -1,0 +1,43 @@
+{
+  "target": {
+    "geometryDash": "2.2081",
+    "geode": "5.11.2",
+    "platform": "Win64"
+  },
+  "hud": {
+    "enabled": true,
+    "position": "top-right",
+    "scale": 0.8,
+    "refreshIntervalSeconds": 0.1,
+    "showsSimulationTick": true,
+    "showsInputCount": true,
+    "showsApproximateCps": true,
+    "windowValue": "unknown-until-validated"
+  },
+  "audio": {
+    "enabled": true,
+    "runtimeMuteDefault": false,
+    "masterVolume": 0.55,
+    "minFrequencyHz": 95.0,
+    "maxFrequencyHz": 880.0,
+    "waveform": "sine",
+    "durationMs": 85,
+    "pitchMapsTo": "inter-press-frame-interval"
+  },
+  "analysis": {
+    "windowMeasurement": "not-implemented",
+    "nominalTickRateHz": 240.0,
+    "tickRateValidated": false,
+    "capturePlayer1": true,
+    "capturePlayer2": true
+  },
+  "recording": {
+    "autoSave": true,
+    "macroFile": "{mod_save_dir}/latest.vpr"
+  },
+  "playback": {
+    "safeMode": true,
+    "safeModeRequiresPractice": true,
+    "releasesHeldInputsOnStopPauseResetQuit": true
+  }
+}

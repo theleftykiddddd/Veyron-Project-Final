@@ -1,0 +1,128 @@
+{
+  "geode": "5.11.2",
+  "gd": {
+    "win": "2.2081"
+  },
+  "id": "alan.veyron-proyect",
+  "name": "Veyron Proyect",
+  "version": "v0.2.0",
+  "developer": "Alan",
+  "description": "Frame-based macro recording and playback, live HUD, VPR import/export, and input timing analysis for Geometry Dash.",
+  "settings": {
+    "hud-enabled": {
+      "type": "bool",
+      "name": "Enable gameplay HUD",
+      "description": "Show the Veyron live status panel while playing.",
+      "default": true
+    },
+    "hud-position": {
+      "type": "string",
+      "name": "HUD position",
+      "description": "Choose one of the four screen corners.",
+      "default": "top-right",
+      "one-of": [
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right"
+      ]
+    },
+    "hud-scale": {
+      "type": "float",
+      "name": "HUD scale",
+      "description": "Size of the live status panel.",
+      "default": 0.8,
+      "min": 0.5,
+      "max": 1.5,
+      "control": {
+        "slider": true,
+        "slider-step": 0.05,
+        "input": true
+      }
+    },
+    "audio-enabled": {
+      "type": "bool",
+      "name": "Enable chimes",
+      "description": "Play a short tone on captured and replayed press inputs. The pitch follows the interval between presses, not a measured hitbox window.",
+      "default": true
+    },
+    "master-volume": {
+      "type": "float",
+      "name": "Chime volume",
+      "description": "Amplitude of generated Veyron WAV chimes.",
+      "default": 0.55,
+      "min": 0.0,
+      "max": 1.0,
+      "control": {
+        "slider": true,
+        "slider-step": 0.05,
+        "input": true
+      }
+    },
+    "audio-min-hz": {
+      "type": "float",
+      "name": "Lowest chime frequency",
+      "description": "Pitch used for a 1-frame interval.",
+      "default": 95.0,
+      "min": 50.0,
+      "max": 500.0,
+      "control": {
+        "slider": true,
+        "slider-step": 5.0,
+        "input": true
+      }
+    },
+    "audio-max-hz": {
+      "type": "float",
+      "name": "Highest chime frequency",
+      "description": "Pitch used for a 24-frame interval.",
+      "default": 880.0,
+      "min": 200.0,
+      "max": 2000.0,
+      "control": {
+        "slider": true,
+        "slider-step": 10.0,
+        "input": true
+      }
+    },
+    "safe-mode": {
+      "type": "bool",
+      "name": "Safe playback mode",
+      "description": "Require Practice Mode before injecting a macro into gameplay.",
+      "default": true
+    },
+    "auto-save": {
+      "type": "bool",
+      "name": "Auto-save on stop/reset/quit",
+      "description": "Write the captured macro to the configured VPR path when a recording ends.",
+      "default": true
+    },
+    "capture-player1": {
+      "type": "bool",
+      "name": "Capture Player 1",
+      "default": true
+    },
+    "capture-player2": {
+      "type": "bool",
+      "name": "Capture Player 2",
+      "default": true
+    },
+    "macro-file": {
+      "type": "file",
+      "name": "VPR macro file",
+      "description": "The same path is used by the Load VPR and Save VPR buttons.",
+      "default": "{mod_save_dir}/latest.vpr",
+      "control": {
+        "dialog": "open",
+        "filters": [
+          {
+            "files": [
+              "*.vpr"
+            ],
+            "description": "Veyron macro (*.vpr)"
+          }
+        ]
+      }
+    }
+  }
+}
