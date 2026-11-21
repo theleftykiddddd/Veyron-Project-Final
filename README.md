@@ -16,13 +16,37 @@ Geometry Dash macro recording, native VPR import/export, replay scheduling, and 
 The Geode integration lives in `src/geode/VeyronIntegration.cpp`.
 
 - `PauseLayer`: adds the **VEYRON** entry point and opens the control popup.
-- Control popup: fixed-size three-column controls for REC, STOP, PLAY, SAVE, LOAD, HUD, and SOUND. The popup uses a dark panel, compact status card, and short labels to prevent button overlap.
+- Control popup: fixed-size three-column controls for REC, STOP, PLAY, SAVE, LOAD, HUD, and SOUND. The popup uses a dark panel, compact status card, cyan accent, and fixed geometry so captions cannot make buttons overlap.
 - `GJBaseGameLayer`: captures press/release inputs and processes due replay events on the simulation command hook.
 - `PlayLayer`: owns the compact gameplay HUD and releases held replay inputs on stop, finish, reset, and quit.
-- HUD: translucent dark panel with a state-colored accent, frame counter, input count, approximate CPS, and an explicit unmeasured-window label.
-- Audio: generates short PCM sine-wave WAV chimes. Pitch follows the spacing between press inputs; it is not a measured hitbox window.
+- HUD: translucent dark panel with a state-colored accent, selectable frame/input/CPS/last-action lines, a Safe Mode indicator, and an explicit `WINDOW UNMEASURED` line.
+- Audio: generates short PCM sine-wave WAV chimes through Geometry Dash's FMOD backend. Pitch follows the spacing between press inputs; it is not a measured hitbox window.
 - Safe playback: enabled by default and requires Practice Mode before macro injection.
 - File path: Load VPR and Save VPR use the persistent `macro-file` Geode setting. The default is `{mod_save_dir}/latest.vpr`.
+
+## Configuration
+
+The following controls are available from Geode's mod settings. HUD and audio toggles in the Veyron popup update the corresponding persistent settings.
+
+| Setting | What it controls |
+|---|---|
+| `hud-enabled` | Show/hide the gameplay HUD |
+| `hud-position` | One of the four screen corners |
+| `hud-scale` | HUD size |
+| `hud-opacity` | Background opacity |
+| `hud-refresh-interval` | HUD text refresh interval (0.05–0.50 seconds) |
+| `hud-show-frame` | Show simulation frame counter |
+| `hud-show-inputs` | Show recorded event count |
+| `hud-show-cps` | Show approximate presses per nominal one-second tick window |
+| `hud-show-last-action` | Show the latest status message |
+| `hud-show-safe-mode` | Show the SAFE header marker |
+| `audio-enabled` | Persistent chime enable/disable |
+| `master-volume` | Chime amplitude |
+| `audio-min-hz` / `audio-max-hz` | Chime pitch range |
+| `safe-mode` | Require Practice Mode for playback |
+| `auto-save` | Save when recording ends, resets, or the level closes |
+| `capture-player1` / `capture-player2` | Choose which players' inputs are captured |
+| `macro-file` | VPR file used for load/save |
 
 ## Core
 
@@ -34,7 +58,7 @@ The replay scheduler exposes `drainDueEvents`, returning complete press/release 
 
 The live counter advances after each non-half `GJBaseGameLayer::processCommands` pass. Replay events are drained immediately before the corresponding vanilla command pass. This avoids treating render FPS as gameplay frames, but the timing still requires validation against GD 2.2081, frame-step mods, timewarp, and unusual tick scheduling. Playback is a testing/research feature, not a guarantee of deterministic cross-machine timing.
 
-A macro's click spacing is not an input window. The HUD intentionally displays `WINDOW UNMEASURED` until a validated measurement backend exists. Chime pitch follows inter-press spacing only.
+A macro's click spacing is not an input window. The HUD intentionally displays `WINDOW UNMEASURED` until a validated measurement backend exists. Chime pitch follows inter-press spacing only. The CPS number is approximate and based on the configured nominal simulation tick window; it is not a render-FPS measurement.
 
 Third-party macro codecs (GDR/GDR2, SLC, CML, tcBot, Eclipse) are not implemented. Native `.vpr` is supported.
 
@@ -63,8 +87,8 @@ ctest --test-dir build --output-on-failure
 4. Pause again and choose **STOP** to finish recording. Auto-save writes the macro to the configured VPR path.
 5. Use **LOAD** to load a saved VPR or use a macro already recorded in memory.
 6. In Practice Mode, choose **PLAY** to start playback; the same button pauses or resumes it.
-7. Use **SAVE** to export the current macro, **HUD** to toggle the overlay, and **SOUND** to mute/unmute chimes.
-8. Persistent position, scale, audio, and Safe Mode settings remain available through Geode's mod settings.
+7. Use **SAVE** to export the current macro, **HUD** to toggle the overlay, and **SOUND** to enable/disable chimes persistently.
+8. Adjust HUD position, scale, opacity, displayed metrics, refresh interval, audio, capture players, autosave, and Safe Mode from Geode's mod settings.
 
 ## Safety and records
 
